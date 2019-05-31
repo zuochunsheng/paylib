@@ -11,24 +11,76 @@ def isReleaseBuild() {
     return !MAVEN_VERSION.contains("SNAPSHOT");
 }
 // 获取仓库url
-def getRepositoryUrl() {
-    return isReleaseBuild() ? MAVEN_RELEASE_URL : MAVEN_SNAPSHOT_URL;
+def getReleaseRepositoryUrl() {
+    return hasProperty('RELEASE_REPOSITORY_URL') ? RELEASE_REPOSITORY_URL
+            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
 }
+def getSnapshotRepositoryUrl() {
+    return hasProperty('SNAPSHOT_REPOSITORY_URL') ? SNAPSHOT_REPOSITORY_URL
+            : "https://oss.sonatype.org/content/repositories/snapshots/"
+}
+
+def getRepositoryUsername() {
+    return hasProperty('MAVEN_USERNAME') ? MAVEN_USERNAME : ""
+}
+def getRepositoryPassword() {
+    return hasProperty('MAVEN_PASSWORD') ? MAVEN_PASSWORD : ""
+}
+
 
 uploadArchives {
     repositories {
         mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
             pom.project {
                 version MAVEN_VERSION
                 groupId MAVEN_GROUP_ID
                 artifactId MAVEN_ARTIFACT_ID
                 packaging MAVEN_PACKAGING
                 description MAVEN_DESCRIPTION
+                name MAVEN_NAME
+                //url MAVEN_URL
+                inceptionYear MAVEN_INCEPTION_YEAR
+
+                scm {
+                    tag POM_TAG
+                    url POM_SCM_URL
+                    connection POM_SCM_CONNECTION
+                    developerConnection POM_SCM_DEV_CONNECTION
+
+                }
+
+                licenses {
+                    license {
+                        name POM_LICENCE_NAME
+                        url POM_LICENCE_URL
+                        distribution POM_LICENCE_DIST
+                        // comments POM_LICENCE_COMMENTS
+                    }
+                }
+
+                developers {
+                    developer {
+                        //id POM_DEVELOPER_ID
+                        name POM_DEVELOPER_NAME
+                        email POM_DEVELOPER_EMAIL
+                        url POM_DEVELOPER_URL
+                    }
+                }
+
+                issueManagement {
+                    system POM_ISSUE_MANAGEMENT_SYSTEM
+                    url POM_ISSUE_MANAGEMENT_URL
+                }
             }
-            repository(url: getRepositoryUrl()) {
-                // maven授权信息
-                authentication(userName: MAVEN_NAME, password: MAVEN_PASSWORD)
+
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+
+            repository(url: getReleaseRepositoryUrl()) {
+                authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+            }
+            snapshotRepository(url: getSnapshotRepositoryUrl()) {
+                authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
             }
         }
     }
@@ -39,6 +91,43 @@ signing { // 当 发布版本 & 存在"uploadArchives"任务时，才执行
         isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives")
     }
     sign configurations.archives
+}
+task androidJavadocs(type: Javadoc) {
+    failOnError false
+    source = android.sourceSets.main.java.source
+    options {
+        links "http://docs.oracle.com/javase/7/docs/api/"
+        linksOffline "http://d.android.com/reference", "${android.sdkDirectory}/docs/reference"
+    }
+    classpath += project.android.libraryVariants.toList().first().javaCompile.classpath
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task androidJavadocsJar(type: Jar, dependsOn: androidJavadocs) {
+    classifier = 'javadoc'
+    from androidJavadocs.destinationDir
+}
+
+task androidSourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
+
+task apklib(type: Zip) {
+    appendix = extension = 'apklib'
+    from 'AndroidManifest.xml'
+    into('res') {
+        from 'res'
+    }
+    into('src') {
+        from 'src'
+    }
+}
+
+artifacts {
+    archives androidSourcesJar
+    archives androidJavadocsJar
+    archives apklib
 }
 
 
