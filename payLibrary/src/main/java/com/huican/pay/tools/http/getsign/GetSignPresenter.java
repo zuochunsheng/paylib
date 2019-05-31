@@ -38,7 +38,7 @@ public class GetSignPresenter {
                 try {
                     //Log.e("sign", "签名response ：" + responseBody.string());
                     getSignView.getSignView(responseBody.string()+"");
-                } catch (IOException | JSONException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
 

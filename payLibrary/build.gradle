@@ -1,16 +1,7 @@
 apply plugin: 'com.android.library'
 
 
-//repositories {
-//    jcenter()
-//
-//    flatDir{
-//        dirs 'libs'
-//
-//    }
-//}
-
-
+apply from: 'maven_upload.gradle'
 android {
     compileSdkVersion 28
 
@@ -77,6 +68,7 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
     testImplementation 'junit:junit:4.12'
+
     implementation 'com.android.support:appcompat-v7:28.0.0'
 
     /* Retrofit */
